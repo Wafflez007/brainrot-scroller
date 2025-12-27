@@ -4,19 +4,20 @@ const MemeCanvas = ({ imageSrc, topText, bottomText }) => {
   const canvasRef = useRef(null);
   const [dataUrl, setDataUrl] = useState('');
 
-  // Helper: Logic to wrap text onto multiple lines
+  // STANDARD SIZE: 500x500 pixels
+  const CANVAS_SIZE = 500;
+
+  // Helper: Text Wrapping
   const wrapText = (ctx, text, x, y, maxWidth, lineHeight, isBottom) => {
     if (!text) return;
     const words = text.split(' ');
     let line = '';
     const lines = [];
 
-    // Calculate lines
     for (let n = 0; n < words.length; n++) {
       const testLine = line + words[n] + ' ';
       const metrics = ctx.measureText(testLine);
-      const testWidth = metrics.width;
-      if (testWidth > maxWidth && n > 0) {
+      if (metrics.width > maxWidth && n > 0) {
         lines.push(line);
         line = words[n] + ' ';
       } else {
@@ -25,11 +26,10 @@ const MemeCanvas = ({ imageSrc, topText, bottomText }) => {
     }
     lines.push(line);
 
-    // Draw lines
-    // If bottom text, draw upwards from the bottom
     let startY = isBottom ? y - (lines.length - 1) * lineHeight : y;
     
     lines.forEach((l, i) => {
+      // Thick black stroke for visibility
       ctx.strokeText(l.toUpperCase(), x, startY + (i * lineHeight));
       ctx.fillText(l.toUpperCase(), x, startY + (i * lineHeight));
     });
@@ -43,38 +43,68 @@ const MemeCanvas = ({ imageSrc, topText, bottomText }) => {
     img.src = imageSrc;
 
     img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
+      // 1. FORCE STANDARD SIZE
+      canvas.width = CANVAS_SIZE;
+      canvas.height = CANVAS_SIZE;
 
-      // Styling
-      const fontSize = Math.floor(img.width * 0.1); 
+      // 2. "OBJECT-FIT: COVER" LOGIC (Crop to Center)
+      // Calculate scaling to fill the 500x500 square
+      const scale = Math.max(CANVAS_SIZE / img.width, CANVAS_SIZE / img.height);
+      const x = (CANVAS_SIZE / 2) - (img.width / 2) * scale;
+      const y = (CANVAS_SIZE / 2) - (img.height / 2) * scale;
+
+      // Draw black background first (in case of transparency)
+      ctx.fillStyle = "black";
+      ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+      // Draw image scaled and centered
+      ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+
+      // 3. STYLING (Now standardized!)
+      const fontSize = 50; // Fixed font size since canvas is fixed
       ctx.font = `${fontSize}px 'VT323', monospace`;
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.strokeStyle = 'black';
-      ctx.lineWidth = fontSize / 4;
+      ctx.lineWidth = 8; // Thicker stroke
 
-      const maxWidth = canvas.width * 0.9; // 90% of width
+      const maxWidth = CANVAS_SIZE * 0.9;
       const lineHeight = fontSize * 1.1;
 
-      // Draw Top Text (Wrapped)
-      wrapText(ctx, topText, canvas.width / 2, 10, maxWidth, lineHeight, false);
-
-      // Draw Bottom Text (Wrapped)
-      // Note: We pass 'true' for isBottom to handle vertical positioning
+      // 4. DRAW TEXT
+      wrapText(ctx, topText, CANVAS_SIZE / 2, 20, maxWidth, lineHeight, false);
+      
       ctx.textBaseline = 'bottom'; 
-      wrapText(ctx, bottomText, canvas.width / 2, canvas.height - 10, maxWidth, lineHeight, true);
+      wrapText(ctx, bottomText, CANVAS_SIZE / 2, CANVAS_SIZE - 20, maxWidth, lineHeight, true);
 
       setDataUrl(canvas.toDataURL('image/png'));
     };
   }, [imageSrc, topText, bottomText]);
 
   return (
-    <div style={{ border: '2px solid #333', display: 'inline-block', maxWidth: '100%' }}>
+    <div style={{ 
+      border: '4px solid #333', 
+      display: 'inline-block', 
+      width: '100%', 
+      maxWidth: '500px', // Responsive container
+      aspectRatio: '1 / 1', // Forces the container to be square
+      backgroundColor: '#000'
+    }}>
         <canvas ref={canvasRef} style={{ display: 'none' }} />
-        {dataUrl && <img src={dataUrl} alt="Generated Meme" style={{ width: '100%', display: 'block' }} />}
+        
+        {/* Render the generated image */}
+        {dataUrl ? (
+          <img 
+            src={dataUrl} 
+            alt="Generated Meme" 
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+          />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>
+            LOADING PIXELS...
+          </div>
+        )}
     </div>
   );
 };
