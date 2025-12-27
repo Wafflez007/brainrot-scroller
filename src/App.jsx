@@ -74,7 +74,7 @@ function App() {
     setStatus("CONSUMING DATA...");
     
     // Use your LOCAL images
-    const totalImages = 5; 
+    const totalImages = 7; 
     const nextImg = `/memes/${Math.floor(Math.random() * totalImages) + 1}.jpg`;
     
     // Send to worker
