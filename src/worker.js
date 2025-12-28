@@ -13,6 +13,16 @@ const BACKUP_CAPTIONS = [
   "AVERAGE TUESDAY IN OHIO"
 ];
 
+const CAPTION_STYLES = [
+  "WHEN YOU REALIZE", 
+  "POV YOU JUST",
+  "ME AFTER",
+  "NOBODY:",
+  "THIS IMAGE FEELS LIKE",
+  "LIVE REACTION TO",
+  "BRO REALLY SAID",
+];
+
 class AI_Pipeline {
   static visionTask = null;
   static textTask = null;
@@ -47,6 +57,8 @@ self.addEventListener('message', async (event) => {
     // FIX 1: "Few-Shot" Prompting
     // We give it examples so it knows exactly what style we want.
     // We end with "CAPTION: WHEN" to force it to start a "When you..." joke.
+
+    const style = CAPTION_STYLES[Math.floor(Math.random() * CAPTION_STYLES.length)];
     const prompt = `
     Image: A cat screaming.
     Caption: WHEN YOU STEP ON A LEGO
@@ -55,7 +67,7 @@ self.addEventListener('message', async (event) => {
     Caption: POV YOU FORGOT YOUR PHONE
 
     Image: ${description}.
-    Caption: WHEN`;
+    Caption: ${style}`;
     
     const textResult = await pipe.text(prompt, {
       max_new_tokens: 20,       // Keep it very short
@@ -68,15 +80,16 @@ self.addEventListener('message', async (event) => {
 
     console.log("Raw AI Output:", textResult); 
 
-    // FIX 2: Cleanup Logic
-    // The model will generate " WHEN..." so we need to add the "WHEN" back
+    // FIX 2: Caption post-processing
+    // Extract the newly generated text, apply the selected style,
+    // and clean it into a short, meme-ready caption.
     let rawText = textResult[0].generated_text;
     
     // Extract the new text added after our prompt
-    let generatedPart = rawText.split(prompt)[1] || "";
+    let generatedPart = rawText.slice(prompt.length);
     
     // Reconstruct the full caption
-    let caption = ("WHEN " + generatedPart).trim();
+    let caption = (style + " " + generatedPart).trim();
     
     // Stop at the first newline or punctuation to prevent run-on paragraphs
     caption = caption.split('\n')[0];

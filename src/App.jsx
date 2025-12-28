@@ -16,7 +16,7 @@ function App() {
   // --- AUDIO LOGIC (Uses your files) ---
   const playChaosSound = () => {
     try {
-      const totalSounds = 4; // You have 4 files
+      const totalSounds = 10; 
       const randomId = Math.floor(Math.random() * totalSounds) + 1;
       const audio = new Audio(`/sounds/${randomId}.mp3`);
       audio.volume = 0.6; 
@@ -74,7 +74,7 @@ function App() {
     setStatus("CONSUMING DATA...");
     
     // Use your LOCAL images
-    const totalImages = 7; 
+    const totalImages = 20; 
     const nextImg = `/memes/${Math.floor(Math.random() * totalImages) + 1}.jpg`;
     
     // Send to worker
