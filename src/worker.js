@@ -13,6 +13,17 @@ const BACKUP_CAPTIONS = [
   "AVERAGE TUESDAY IN OHIO"
 ];
 
+const CAPTION_STYLES = [
+  "WHEN YOU REALIZE", 
+  "POV YOU JUST",
+  "ME AFTER",
+  "NOBODY:",
+  "THIS IMAGE FEELS LIKE",
+  "LIVE REACTION TO",
+  "BRO REALLY SAID",
+  "TEACHER:",
+];
+
 class AI_Pipeline {
   static visionTask = null;
   static textTask = null;
@@ -44,51 +55,53 @@ self.addEventListener('message', async (event) => {
     
     self.postMessage({ status: 'update', message: 'Hallucinating caption...' });
 
-    // FIX 1: "Few-Shot" Prompting
-    // We give it examples so it knows exactly what style we want.
-    // We end with "CAPTION: WHEN" to force it to start a "When you..." joke.
-    const prompt = `
-    Image: A cat screaming.
-    Caption: WHEN YOU STEP ON A LEGO
-    
-    Image: A dark hallway.
-    Caption: POV YOU FORGOT YOUR PHONE
+    // 2. Select a Random Style
+    const style = CAPTION_STYLES[Math.floor(Math.random() * CAPTION_STYLES.length)];
 
-    Image: ${description}.
-    Caption: WHEN`;
+    // 3. Construct Prompt (Cleaned up whitespace)
+    // We remove the indentation so the model doesn't get confused by spaces
+    const prompt = `Image: A cat screaming.
+Caption: WHEN YOU STEP ON A LEGO
+
+Image: A dark hallway.
+Caption: POV YOU FORGOT YOUR PHONE
+
+Image: ${description}.
+Caption: ${style}`;
     
+    // 4. Generate Text
     const textResult = await pipe.text(prompt, {
-      max_new_tokens: 20,       // Keep it very short
-      temperature: 1.1,         // Higher creativity to avoid boring text
+      max_new_tokens: 25,       // Slightly increased to allow finishing the joke
+      temperature: 1.1,         // High chaos
       do_sample: true,
       top_k: 50,
-      repetition_penalty: 1.2,  // Stop repeating words
+      repetition_penalty: 1.2,  
       no_repeat_ngram_size: 2
     });
 
     console.log("Raw AI Output:", textResult); 
 
-    // FIX 2: Cleanup Logic
-    // The model will generate " WHEN..." so we need to add the "WHEN" back
+    // 5. Cleanup Logic
     let rawText = textResult[0].generated_text;
     
-    // Extract the new text added after our prompt
-    let generatedPart = rawText.split(prompt)[1] || "";
+    // Remove the prompt from the result to get ONLY the new words
+    let generatedPart = rawText.replace(prompt, '').trim();
     
-    // Reconstruct the full caption
-    let caption = ("WHEN " + generatedPart).trim();
+    // Combine Style + New Words
+    let caption = `${style} ${generatedPart}`;
     
-    // Stop at the first newline or punctuation to prevent run-on paragraphs
+    // Clean it up (Stop at new lines, remove weird symbols)
     caption = caption.split('\n')[0];
     caption = caption.split('.')[0]; 
-
-    // Remove common garbage characters
     caption = caption.replace(/[:"']/g, '').toUpperCase();
+
+    // Remove double spaces if any
+    caption = caption.replace(/\s+/g, ' ').trim();
 
     console.log("Cleaned Caption:", caption); 
 
-    // Fallback if it failed to generate anything meaningful
-    if (caption.length < 5) {
+    // Fallback
+    if (caption.length < 5 || caption === style) {
        caption = BACKUP_CAPTIONS[Math.floor(Math.random() * BACKUP_CAPTIONS.length)];
     }
 

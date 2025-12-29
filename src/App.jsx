@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import MemeCanvas from './MemeCanvas';
+import FaceTracker from './FaceTracker';
 import './Brainrot.css'; 
 
 function App() {
@@ -7,16 +8,21 @@ function App() {
   const [memes, setMemes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState("Ready");
-  const [hasStarted, setHasStarted] = useState(false); // Controls the Entry Screen
+  const [hasStarted, setHasStarted] = useState(false); 
+  const [isSmiling, setIsSmiling] = useState(false);
+  
+  // NEW: Game State
+  const [health, setHealth] = useState(100); // 100% Brain Integrity
+  const [isDead, setIsDead] = useState(false);
 
   // --- REFS ---
   const worker = useRef(null);
   const sentinelRef = useRef(null);
 
-  // --- AUDIO LOGIC (Uses your files) ---
-  const playChaosSound = () => {
+  // --- AUDIO LOGIC ---
+  const playChaosSound = useCallback(() => {
     try {
-      const totalSounds = 4; // You have 4 files
+      const totalSounds = 10; 
       const randomId = Math.floor(Math.random() * totalSounds) + 1;
       const audio = new Audio(`/sounds/${randomId}.mp3`);
       audio.volume = 0.6; 
@@ -24,16 +30,48 @@ function App() {
     } catch (e) {
       console.error("Audio error", e);
     }
-  };
+  }, []);
 
   // --- CHAOS LOGIC ---
   const getChaosClass = () => {
-    // Added 'chaos-glitch' to the mix
     const classes = ['', '', '', 'chaos-shake', 'chaos-border', 'chaos-rainbow', 'chaos-glitch']; 
     return classes[Math.floor(Math.random() * classes.length)];
   };
 
-  // --- WORKER SETUP (Real AI) ---
+  // --- GAME LOOP (THE DOOM METER) ---
+  useEffect(() => {
+    if (!hasStarted || isDead) return;
+
+    const decayInterval = setInterval(() => {
+      setHealth((prevHealth) => {
+        // 1. Calculate Damage
+        let damage = 0.05; // Base rot (slow)
+        
+        if (!isSmiling) {
+          damage = 0.4; // FAST rot if not smiling (The Penalty)
+        } else {
+          damage = -0.3; // Regenerate if smiling (The Antidote)
+        }
+
+        // 2. Apply Damage
+        const newHealth = prevHealth - damage;
+
+        // 3. Check Death
+        if (newHealth <= 0) {
+          setIsDead(true);
+          return 0;
+        }
+
+        // Clamp between 0 and 100
+        return Math.min(100, Math.max(0, newHealth));
+      });
+    }, 50); // Run every 50ms for smooth updates
+
+    return () => clearInterval(decayInterval);
+  }, [hasStarted, isSmiling, isDead]);
+
+
+  // --- WORKER SETUP ---
   useEffect(() => {
     worker.current = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
 
@@ -46,7 +84,6 @@ function App() {
         setIsLoading(false);
         setStatus("Ready");
         
-        // Play Sound only if user has entered
         if (hasStarted) playChaosSound();
 
         const words = result.caption.split(' ');
@@ -54,7 +91,7 @@ function App() {
         
         const newMeme = {
           id: Date.now(),
-          image: result.imageUsed, // Uses the real image passed back from worker
+          image: result.imageUsed, 
           topText: words.slice(0, midpoint).join(' '),
           bottomText: words.slice(midpoint).join(' '),
           chaosClass: getChaosClass() 
@@ -65,123 +102,178 @@ function App() {
     };
 
     return () => worker.current.terminate();
-  }, [hasStarted]); // Add hasStarted as dependency to ensure audio context is ready
+  }, [hasStarted, playChaosSound]); 
 
   // --- GENERATOR ---
   const generateMeme = useCallback(() => {
-    if (isLoading) return;
+    if (isLoading || isDead) return;
     setIsLoading(true);
     setStatus("CONSUMING DATA...");
     
-    // Use your LOCAL images
-    const totalImages = 7; 
+    const totalImages = 20; 
     const nextImg = `/memes/${Math.floor(Math.random() * totalImages) + 1}.jpg`;
     
-    // Send to worker
     worker.current.postMessage({ image: window.location.origin + nextImg, originalSrc: nextImg });
-  }, [isLoading]);
+  }, [isLoading, isDead]);
 
   // --- INFINITE SCROLL ---
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
-      // Only trigger if started and not loading
-      if (entries[0].isIntersecting && !isLoading && hasStarted) {
+      if (entries[0].isIntersecting && !isLoading && hasStarted && !isDead) {
         generateMeme();
       }
     }, { threshold: 0.1 });
 
     if (sentinelRef.current) observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [generateMeme, isLoading, hasStarted]);
+  }, [generateMeme, isLoading, hasStarted, isDead]);
+
 
   // ==========================================
-  // VIEW 1: THE ENTRY SCREEN (Crucial for Audio)
+  // VIEW 1: BLUE SCREEN OF DEATH (GAME OVER)
+  // ==========================================
+  if (isDead) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, background: '#0000AA', color: 'white',
+        fontFamily: 'Courier New', padding: '40px', zIndex: 9999,
+        display: 'flex', flexDirection: 'column', justifyContent: 'center'
+      }}>
+        <h1 style={{ background: 'white', color: '#0000AA', display: 'inline-block', padding: '0 10px' }}>
+          FATAL EXCEPTION 0xBRAINROT
+        </h1>
+        <p style={{ marginTop: '20px', fontSize: '1.2rem' }}>
+          A fatal exception has occurred at address 0x00000000. The current application will be terminated.
+        </p>
+        <ul style={{ marginTop: '20px', lineHeight: '1.5' }}>
+          <li>* User failed to maintain Positive Vibe Integrity.</li>
+          <li>* Smile levels dropped below critical threshold.</li>
+          <li>* Brain cells have been fully depleted.</li>
+        </ul>
+        <div style={{ marginTop: '50px', textAlign: 'center' }}>
+          <p>Press F5 to restart your consciousness.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ 
+              background: 'white', color: '#0000AA', border: 'none', 
+              padding: '10px 20px', fontSize: '1.2rem', cursor: 'pointer', marginTop: '10px'
+            }}
+          >
+            [ REBOOT SYSTEM ]
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // VIEW 2: ENTRY SCREEN
   // ==========================================
   if (!hasStarted) {
     return (
       <div style={{ 
-        height: '100vh', 
-        background: 'black', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        color: '#0f0',
-        fontFamily: 'monospace',
-        flexDirection: 'column',
-        textAlign: 'center'
+        height: '100vh', background: 'black', display: 'flex', alignItems: 'center', 
+        justifyContent: 'center', color: '#0f0', fontFamily: 'monospace', 
+        flexDirection: 'column', textAlign: 'center' 
       }}>
         <h1 className="chaos-glitch" style={{ fontSize: '3rem', marginBottom: '2rem' }}>BRAINROT SCROLLER</h1>
         
         <div style={{ maxWidth: '600px', marginBottom: '2rem', border: '1px solid #333', padding: '20px' }}>
-          <p>WARNING: AUDIO & VISUAL OVERLOAD IMMINENT.</p>
-          <p style={{ fontSize: '0.8rem', color: '#666' }}>AI MODELS LOADING IN BACKGROUND...</p>
+          <p>SURVIVAL MODE ENABLED.</p>
+          <p style={{ color: 'red', fontWeight: 'bold' }}>WARNING: YOU MUST SMILE TO SURVIVE.</p>
+          <p style={{ fontSize: '0.8rem', color: '#666' }}>IF YOU STOP SMILING, THE ROT WILL CONSUME YOU.</p>
         </div>
 
         <button 
           onClick={() => {
             setHasStarted(true);
-            // Play a silent sound or first sound to unlock browser audio
             new Audio('/sounds/1.mp3').play().catch(() => {});
-            // Trigger first meme
             setTimeout(() => generateMeme(), 500);
           }}
           className="chaos-border"
           style={{ 
-            padding: '20px 40px', 
-            fontSize: '20px', 
-            background: '#0f0', 
-            color: 'black',
-            border: 'none', 
-            cursor: 'pointer', 
-            fontWeight: 'bold',
-            fontFamily: 'monospace',
-            textTransform: 'uppercase'
+            padding: '20px 40px', fontSize: '20px', background: '#0f0', color: 'black',
+            border: 'none', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'monospace'
           }}
         >
-          [ CLICK TO ENTER THE ROT ]
+          [ I ACCEPT THE RISK ]
         </button>
       </div>
     );
   }
 
   // ==========================================
-  // VIEW 2: THE MAIN FEED
+  // VIEW 3: MAIN FEED (WITH DOOM MECHANICS)
   // ==========================================
+  
+  // Calculate Dynamic Styles based on Health
+  // As health drops, opacity of red overlay increases (max 0.6)
+  const redOpacity = Math.max(0, (100 - health) / 100) * 0.6;
+  
+  // Shake screen if health is critical (< 30%)
+  const isCritical = health < 30;
+
   return (
-    <div style={{ backgroundColor: '#000', minHeight: '100vh', color: '#0f0', fontFamily: 'monospace', overflowX: 'hidden' }}>
+    <div className={isCritical ? "chaos-shake" : ""} style={{ 
+      backgroundColor: '#000', minHeight: '100vh', color: '#0f0', 
+      fontFamily: 'monospace', overflowX: 'hidden', position: 'relative' 
+    }}>
       
+      <FaceTracker onSmileChange={setIsSmiling} />
+      
+      {/* RED FILTER OVERLAY (THE PUNISHMENT) */}
+      <div style={{
+        position: 'fixed', inset: 0, background: 'red',
+        opacity: redOpacity, pointerEvents: 'none', zIndex: 50,
+        transition: 'opacity 0.2s ease-out'
+      }} />
+
+      {/* DOOM METER (HEALTH BAR) */}
+      <div style={{
+        position: 'fixed', top: '10px', left: '10px', right: '10px',
+        height: '30px', border: '2px solid white', zIndex: 100,
+        background: '#333'
+      }}>
+        <div style={{
+          height: '100%',
+          width: `${health}%`,
+          background: isSmiling ? '#0f0' : 'red', // Green if healing, Red if dying
+          transition: 'width 0.1s linear, background 0.2s',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'black', fontWeight: 'bold', overflow: 'hidden'
+        }}>
+          {health > 20 ? "BRAIN INTEGRITY" : "CRITICAL FAILURE"}
+        </div>
+      </div>
+
+      {/* SMILE STATUS INDICATOR */}
+      <div style={{ 
+        position: 'fixed', top: '50px', left: '10px', zIndex: 100, 
+        background: 'black', color: isSmiling ? '#0f0' : 'red', 
+        border: '1px solid white', padding: '5px', fontSize: '12px', fontWeight: 'bold' 
+      }}>
+        STATUS: {isSmiling ? "STABILIZED" : "DECAYING..."}
+      </div>
+
       {/* Header */}
       <div style={{ 
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        right: 0, 
-        background: 'rgba(0,0,0,0.9)', 
-        zIndex: 10, 
-        padding: '10px', 
-        borderBottom: '1px solid #0f0',
-        textAlign: 'center'
+        position: 'fixed', top: 0, left: 0, right: 0, 
+        zIndex: 10, padding: '10px', textAlign: 'center',
+        marginTop: '50px' // Push down below health bar
       }}>
-        <h1 className="chaos-rainbow" style={{ margin: 0, fontSize: '1.5rem' }}>BRAINROT_SCROLLER_FEED</h1>
-        <small style={{ color: isLoading ? 'yellow' : '#0f0' }}>STATUS: {status}</small>
+        <small style={{ color: isLoading ? 'yellow' : '#0f0', background: 'black' }}>AI STATUS: {status}</small>
       </div>
 
       {/* Feed Container */}
       <div style={{ 
-        marginTop: '100px', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        gap: '60px', 
-        paddingBottom: '100px' 
+        marginTop: '120px', display: 'flex', flexDirection: 'column', 
+        alignItems: 'center', gap: '60px', paddingBottom: '100px' 
       }}>
         
-        {/* Loading Initial State */}
         {memes.length === 0 && !isLoading && (
             <div className="chaos-shake">INITIALIZING ROT ENGINE...</div>
         )}
 
-        {/* Meme List */}
         {memes.map((meme) => (
           <div key={meme.id} className={meme.chaosClass} style={{ transition: 'all 0.2s' }}>
             <MemeCanvas 
@@ -192,7 +284,6 @@ function App() {
           </div>
         ))}
 
-        {/* Sentinel / Loading Indicator */}
         <div ref={sentinelRef} style={{ height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
           {isLoading ? (
             <h2 className="chaos-shake" style={{color: 'yellow'}}>GENERATING NEW ROT...</h2>
