@@ -1,16 +1,49 @@
-# React + Vite
+# Brainrot Scroller
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A small React + Vite project that displays scrolling memes with optional face-tracking and sound.
 
-Currently, two official plugins are available:
+## Quick start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Prerequisites: Node 16+ and npm or Yarn.
 
-## React Compiler
+Install dependencies and run the dev server:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
+Build for production and preview the build:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+npm run build
+npm run preview
+```
+
+## Overview
+
+- **Framework:** React with Vite (fast HMR)
+- **Source:** `src/` contains the app code
+- **Key files:** `src/App.jsx`, `src/MemeCanvas.jsx`, `src/FaceTracker.jsx`, `src/main.jsx`, `src/worker.js`
+- **Styles:** `src/index.css`, `src/Brainrot.css`
+- **Public assets:** `public/memes/` (images), `public/sounds/` (audio)
+
+## Features
+
+- Scrolling meme display and rendering via `MemeCanvas.jsx`.
+- Optional face-tracking integration in `FaceTracker.jsx`.
+- Background work (audio/processing) handled in `worker.js`.
+
+## Project structure
+
+- `index.html` — app entry
+- `src/` — React components and styles
+- `public/` — static assets served as-is
+
+## Contributing
+
+Feel free to open issues or pull requests. Keep changes focused and include brief testing notes.
+
+## See also
+
+For details about Vite and React setup, refer to the Vite documentation.
