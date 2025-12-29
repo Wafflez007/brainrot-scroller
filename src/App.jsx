@@ -11,7 +11,7 @@ function App() {
   const [hasStarted, setHasStarted] = useState(false); 
   const [isSmiling, setIsSmiling] = useState(false);
   
-  // NEW: Game State
+  // GAME STATE
   const [health, setHealth] = useState(100); // 100% Brain Integrity
   const [isDead, setIsDead] = useState(false);
 
@@ -40,7 +40,7 @@ function App() {
 
   // --- GAME LOOP (THE DOOM METER) ---
   useEffect(() => {
-    if (!hasStarted || isDead) return;
+    if (!hasStarted || isDead || memes.length === 0) return;
 
     const decayInterval = setInterval(() => {
       setHealth((prevHealth) => {
@@ -68,7 +68,7 @@ function App() {
     }, 50); // Run every 50ms for smooth updates
 
     return () => clearInterval(decayInterval);
-  }, [hasStarted, isSmiling, isDead]);
+  }, [hasStarted, isSmiling, isDead, memes.length]);
 
 
   // --- WORKER SETUP ---
@@ -130,7 +130,7 @@ function App() {
 
 
   // ==========================================
-  // VIEW 1: BLUE SCREEN OF DEATH (GAME OVER)
+  // VIEW 1: BLUE SCREEN OF DEATH (TEXT FROM CODE 1)
   // ==========================================
   if (isDead) {
     return (
@@ -167,7 +167,7 @@ function App() {
   }
 
   // ==========================================
-  // VIEW 2: ENTRY SCREEN
+  // VIEW 2: ENTRY SCREEN (TEXT FROM CODE 1)
   // ==========================================
   if (!hasStarted) {
     return (
@@ -203,70 +203,87 @@ function App() {
   }
 
   // ==========================================
-  // VIEW 3: MAIN FEED (WITH DOOM MECHANICS)
+  // VIEW 3: MAIN FEED (LAYOUT FROM CODE 2)
   // ==========================================
   
-  // Calculate Dynamic Styles based on Health
-  // As health drops, opacity of red overlay increases (max 0.6)
+  // Calculate Dynamic Styles
   const redOpacity = Math.max(0, (100 - health) / 100) * 0.6;
-  
-  // Shake screen if health is critical (< 30%)
   const isCritical = health < 30;
 
   return (
     <div className={isCritical ? "chaos-shake" : ""} style={{ 
       backgroundColor: '#000', minHeight: '100vh', color: '#0f0', 
-      fontFamily: 'monospace', overflowX: 'hidden', position: 'relative' 
+      fontFamily: 'monospace', overflowX: 'hidden', position: 'relative',
+      paddingLeft: '60px' // CODE 2 LAYOUT: Push content right for HUD
     }}>
       
       <FaceTracker onSmileChange={setIsSmiling} />
       
-      {/* RED FILTER OVERLAY (THE PUNISHMENT) */}
+      {/* RED FILTER OVERLAY */}
       <div style={{
         position: 'fixed', inset: 0, background: 'red',
         opacity: redOpacity, pointerEvents: 'none', zIndex: 50,
         transition: 'opacity 0.2s ease-out'
       }} />
 
-      {/* DOOM METER (HEALTH BAR) */}
+      {/* --- VERTICAL LEFT HUD (FROM CODE 2) --- */}
       <div style={{
-        position: 'fixed', top: '10px', left: '10px', right: '10px',
-        height: '30px', border: '2px solid white', zIndex: 100,
-        background: '#333'
+        position: 'fixed', top: 0, bottom: 0, left: 0, width: '40px',
+        background: '#111', borderRight: '2px solid #333', zIndex: 100,
+        display: 'flex', flexDirection: 'column-reverse' // Fills from bottom
       }}>
+        {/* The Health Bar */}
         <div style={{
-          height: '100%',
-          width: `${health}%`,
-          background: isSmiling ? '#0f0' : 'red', // Green if healing, Red if dying
-          transition: 'width 0.1s linear, background 0.2s',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'black', fontWeight: 'bold', overflow: 'hidden'
+          width: '100%',
+          height: `${health}%`,
+          background: isSmiling ? '#0f0' : 'red', 
+          transition: 'height 0.1s linear, background 0.2s',
+          boxShadow: isSmiling ? '0 0 10px #0f0' : '0 0 15px red'
+        }} />
+        
+        {/* HUD Text (Rotated) - USING CODE 1 TEXT LOGIC */}
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%', 
+          transform: 'translate(-50%, -50%) rotate(-90deg)',
+          whiteSpace: 'nowrap', fontWeight: 'bold', fontSize: '14px',
+          color: 'white', textShadow: '1px 1px 0 #000'
         }}>
           {health > 20 ? "BRAIN INTEGRITY" : "CRITICAL FAILURE"}
         </div>
       </div>
 
-      {/* SMILE STATUS INDICATOR */}
+      {/* --- STATUS LABELS (Position: Code 2 | Text: Code 1) --- */}
       <div style={{ 
-        position: 'fixed', top: '50px', left: '10px', zIndex: 100, 
-        background: 'black', color: isSmiling ? '#0f0' : 'red', 
-        border: '1px solid white', padding: '5px', fontSize: '12px', fontWeight: 'bold' 
+        position: 'fixed', top: '10px', left: '50px', zIndex: 90, 
+        display: 'flex', flexDirection: 'column', gap: '5px'
       }}>
-        STATUS: {isSmiling ? "STABILIZED" : "DECAYING..."}
+        {/* Smile Status */}
+        <div style={{ 
+          background: 'black', color: isSmiling ? '#0f0' : 'red', 
+          border: '1px solid white', padding: '5px 10px', fontSize: '12px', fontWeight: 'bold' 
+        }}>
+          STATUS: {memes.length === 0 ? "INITIALIZING..." : (isSmiling ? "STABILIZED" : "DECAYING...")}
+        </div>
+        
+        {/* AI Status */}
+        <div style={{ 
+          background: 'black', color: isLoading ? 'yellow' : '#0f0', 
+          border: '1px solid white', padding: '5px 10px', fontSize: '12px', fontWeight: 'bold' 
+        }}>
+          AI STATUS: {status}
+        </div>
       </div>
 
-      {/* Header */}
+      {/* --- FEED HEADER (From Code 2 for layout balance) --- */}
       <div style={{ 
-        position: 'fixed', top: 0, left: 0, right: 0, 
-        zIndex: 10, padding: '10px', textAlign: 'center',
-        marginTop: '50px' // Push down below health bar
+        marginTop: '20px', textAlign: 'center', borderBottom: '1px solid #333', paddingBottom: '20px'
       }}>
-        <small style={{ color: isLoading ? 'yellow' : '#0f0', background: 'black' }}>AI STATUS: {status}</small>
+        <h1 className="chaos-rainbow" style={{ margin: 0, fontSize: '2rem' }}>BRAINROT SCROLLER</h1>
       </div>
 
-      {/* Feed Container */}
+      {/* --- FEED CONTENT --- */}
       <div style={{ 
-        marginTop: '120px', display: 'flex', flexDirection: 'column', 
+        marginTop: '40px', display: 'flex', flexDirection: 'column', 
         alignItems: 'center', gap: '60px', paddingBottom: '100px' 
       }}>
         
